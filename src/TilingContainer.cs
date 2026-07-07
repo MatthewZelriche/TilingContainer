@@ -1,0 +1,74 @@
+using System;
+using System.Diagnostics;
+using Godot;
+
+// TODO: Need a way to add and remove splits/children to the container beyond just the root.
+
+// Note: You should use the Create factory method to create this typically.
+public partial class TilingContainer : Container
+{
+    // Assigned in SetRoot called via the constructor
+    private LayoutNode? _root = null;
+
+    // In Pixels
+    private float _borderThickness = 1.0f;
+
+    [Export(PropertyHint.Range, "1,64,1.0,or_greater")]
+    public float BorderThickness
+    {
+        get => _borderThickness;
+        set
+        {
+            value = Mathf.Max(1.0f, value);
+            if (Mathf.IsEqualApprox(_borderThickness, value))
+                return;
+            _borderThickness = value;
+            MarkLayoutDirty();
+        }
+    }
+
+    public static TilingContainer Create(Control root)
+    {
+        TilingContainer tilingContainer = new();
+        tilingContainer.SetRoot(root);
+        return tilingContainer;
+    }
+
+    // Sets the content of the root node, resetting the entire layout if a previous root was set.
+    public void SetRoot(Control root)
+    {
+        if (root.GetParent() is not null)
+        {
+            throw new InvalidOperationException("Root must not have a parent");
+        }
+
+        // TODO: Need to tear down the old root
+        _root = new LeafNode { Control = root };
+        AddChild(root);
+    }
+
+    public override Vector2 _GetMinimumSize() =>
+        _root?.GetMinimumSize(BorderThickness) ?? Vector2.Zero;
+
+    public override void _Notification(int what)
+    {
+        if (_root is null)
+        {
+            return;
+        }
+
+        // Container has changed, recursively re-organize the layout
+        if (what == NotificationSortChildren)
+        {
+            Debug.Assert(_root is not null);
+            Rect2 availableRect = new(Vector2.Zero, Size);
+            _root.SortChildren(this, availableRect);
+        }
+    }
+
+    private void MarkLayoutDirty()
+    {
+        QueueSort();
+        UpdateMinimumSize();
+    }
+}
