@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Godot;
 
 public enum SplitAxis
@@ -8,8 +9,16 @@ public enum SplitAxis
     Vertical,
 }
 
+public enum InsertPlacement
+{
+    Before,
+    After,
+}
+
 internal abstract class LayoutNode
 {
+    internal SplitNode? Parent { get; set; } = null;
+
     public abstract Vector2 GetMinimumSize(float borderThickness);
 
     // Called when the container layout is invalidated (via the NotificationSortChildren notification)
@@ -45,9 +54,39 @@ internal sealed class LeafNode : LeafNodeBase
 
 internal sealed class SplitNode : LayoutNode
 {
+    [SetsRequiredMembers]
+    internal SplitNode(LayoutNode left, LayoutNode right, SplitAxis axis)
+    {
+        Left = left;
+        Right = right;
+        Axis = axis;
+    }
+
+    // Safe because the private backing members are always initialized by the field setters, which
+    // are called in the constructor.
+    private LayoutNode _left = null!;
+    private LayoutNode _right = null!;
+    public required LayoutNode Left
+    {
+        get => _left;
+        internal set
+        {
+            Debug.Assert(value is not null && value.Parent is null);
+            _left = value;
+            value.Parent = this;
+        }
+    }
+    public required LayoutNode Right
+    {
+        get => _right;
+        internal set
+        {
+            Debug.Assert(value is not null && value.Parent is null);
+            _right = value;
+            value.Parent = this;
+        }
+    }
     public required SplitAxis Axis { get; init; }
-    public required LayoutNode Left { get; init; }
-    public required LayoutNode Right { get; init; }
     public float Ratio = 0.5f; // Default ratio is 50%
     public Rect2 BorderRect { get; private set; }
 
