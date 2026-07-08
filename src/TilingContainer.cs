@@ -10,6 +10,7 @@ public partial class TilingContainer : Container
 {
     // Assigned in SetRoot called via the constructor
     private LayoutTree _layoutTree = new();
+    private readonly Dictionary<Control, LeafNode> _leafNodesByControl = new();
 
     // In Pixels
     private float _borderThickness = 1.0f;
@@ -44,8 +45,48 @@ public partial class TilingContainer : Container
         }
 
         // TODO: Need to tear down the old root
-        _layoutTree.SetRoot(new LeafNode { Control = root });
+        LeafNode rootNode = new() { Control = root };
+        _layoutTree.SetRoot(rootNode);
+        _leafNodesByControl.Clear();
+        _leafNodesByControl.Add(root, rootNode);
         AddChild(root);
+    }
+
+    public bool InsertSplit(
+        Control toSplit,
+        Control newChild,
+        SplitAxis axis,
+        InsertPlacement placement
+    )
+    {
+        ArgumentNullException.ThrowIfNull(toSplit);
+        ArgumentNullException.ThrowIfNull(newChild);
+
+        if (newChild.GetParent() is not null)
+        {
+            throw new InvalidOperationException("New child must not have a parent");
+        }
+
+        if (!_leafNodesByControl.TryGetValue(toSplit, out LeafNode? toSplitNode))
+        {
+            return false;
+        }
+
+        if (_leafNodesByControl.ContainsKey(newChild))
+        {
+            return false;
+        }
+
+        LeafNode newChildNode = new() { Control = newChild };
+        if (!_layoutTree.InsertSplit(toSplitNode, newChildNode, axis, placement))
+        {
+            return false;
+        }
+
+        _leafNodesByControl.Add(newChild, newChildNode);
+        AddChild(newChild);
+        MarkLayoutDirty();
+        return true;
     }
 
     public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
