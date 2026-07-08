@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Godot;
 
@@ -8,7 +9,7 @@ using Godot;
 public partial class TilingContainer : Container
 {
     // Assigned in SetRoot called via the constructor
-    private LayoutNode? _root = null;
+    private LayoutTree _layoutTree = new();
 
     // In Pixels
     private float _borderThickness = 1.0f;
@@ -43,16 +44,15 @@ public partial class TilingContainer : Container
         }
 
         // TODO: Need to tear down the old root
-        _root = new LeafNode { Control = root };
+        _layoutTree.SetRoot(new LeafNode { Control = root });
         AddChild(root);
     }
 
-    public override Vector2 _GetMinimumSize() =>
-        _root?.GetMinimumSize(BorderThickness) ?? Vector2.Zero;
+    public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
 
     public override void _Notification(int what)
     {
-        if (_root is null)
+        if (_layoutTree.Root is null)
         {
             return;
         }
@@ -60,9 +60,16 @@ public partial class TilingContainer : Container
         // Container has changed, recursively re-organize the layout
         if (what == NotificationSortChildren)
         {
-            Debug.Assert(_root is not null);
-            Rect2 availableRect = new(Vector2.Zero, Size);
-            _root.SortChildren(this, availableRect);
+            _layoutTree.ApplyLayout(
+                (node, bounds) =>
+                {
+                    Control leafControl = ((LeafNode)node).Control;
+                    Debug.Assert(leafControl.GetParent() == this);
+                    this.FitChildInRect(leafControl, bounds);
+                },
+                BorderThickness,
+                new(Vector2.Zero, Size) // Start with the entire available space in the container
+            );
         }
     }
 
