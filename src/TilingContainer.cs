@@ -89,6 +89,33 @@ public partial class TilingContainer : Container
         return true;
     }
 
+    public bool RemoveLeaf(Control child)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+
+        if (!_leafNodesByControl.TryGetValue(child, out LeafNode? childNode))
+        {
+            return false;
+        }
+
+        if (childNode.Parent is null)
+        {
+            return false;
+        }
+
+        if (!_layoutTree.RemoveLeaf(childNode))
+        {
+            throw new InvalidOperationException(
+                "Layout tree is inconsistent with the control map."
+            );
+        }
+
+        _leafNodesByControl.Remove(child);
+        RemoveChild(child);
+        MarkLayoutDirty();
+        return true;
+    }
+
     public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
 
     public override void _Notification(int what)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Godot;
 
 internal sealed class LayoutTree
@@ -74,7 +75,63 @@ internal sealed class LayoutTree
     // Removes child from the tree
     internal bool RemoveLeaf(LeafNodeBase child)
     {
-        throw new NotImplementedException();
+        if (Root is null)
+        {
+            return false;
+        }
+
+        SplitNode? parent = child.Parent;
+        if (parent is null)
+        {
+            // No parent means the child is the root, but we want to ensure there's always a root
+            // If the user wants to replace the root, they should use SetRoot.
+            return false;
+        }
+
+        bool removingLeft = ReferenceEquals(parent.Left, child);
+        bool removingRight = ReferenceEquals(parent.Right, child);
+        if (!removingLeft && !removingRight)
+        {
+            return false;
+        }
+
+        LayoutNode sibling = removingLeft ? parent.Right : parent.Left;
+        SplitNode? grandparent = parent.Parent;
+        if (grandparent is null)
+        {
+            if (!ReferenceEquals(Root, parent))
+            {
+                return false;
+            }
+
+            child.Parent = null;
+            sibling.Parent = null;
+            parent.Parent = null;
+            Root = sibling;
+            return true;
+        }
+
+        bool parentIsLeft = ReferenceEquals(grandparent.Left, parent);
+        bool parentIsRight = ReferenceEquals(grandparent.Right, parent);
+        if (!parentIsLeft && !parentIsRight)
+        {
+            return false;
+        }
+
+        child.Parent = null;
+        sibling.Parent = null;
+        parent.Parent = null;
+
+        if (parentIsLeft)
+        {
+            grandparent.Left = sibling;
+        }
+        else
+        {
+            grandparent.Right = sibling;
+        }
+
+        return true;
     }
 
     // Detaches the child toMove and re-attaches it to a new split node that contains both
