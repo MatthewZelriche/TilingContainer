@@ -144,6 +144,16 @@ public partial class TilingContainer : Container
         return true;
     }
 
+    protected Control? FindLeafAt(Vector2 localPosition) => _layoutTree.FindLeafAt(localPosition);
+
+    protected Rect2? GetLeafBounds(Control leaf) => _layoutTree.GetLeafBounds(leaf);
+
+    protected Rect2? GetInsertPreviewRect(
+        Control target,
+        SplitAxis axis,
+        InsertPlacement placement
+    ) => _layoutTree.GetInsertPreviewRect(target, axis, placement);
+
     public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
 
     // Use _Input instead of _GuiInput so we can intercept mouse events before they reach children
@@ -259,7 +269,7 @@ public partial class TilingContainer : Container
         }
     }
 
-    private Vector2 ToLocalPosition(Vector2 viewportPosition)
+    protected Vector2 ToLocalPosition(Vector2 viewportPosition)
     {
         return GetGlobalTransformWithCanvas().AffineInverse() * viewportPosition;
     }

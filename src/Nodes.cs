@@ -18,6 +18,7 @@ internal abstract class LayoutNode<T>
     where T : notnull
 {
     internal SplitNode<T>? Parent { get; set; } = null;
+    public Rect2 Bounds { get; internal set; } // Bounds assigned during the most recent layout pass.
 }
 
 internal sealed class LeafNode<T> : LayoutNode<T>
@@ -68,6 +69,5 @@ internal sealed class SplitNode<T> : LayoutNode<T>
     }
     public required SplitAxis Axis { get; init; }
     public float Ratio = 0.5f; // Default ratio is 50%
-    public Rect2 Bounds { get; internal set; } // Full bounds of the split node including children
     public Rect2 BorderRect { get; internal set; } // Visual bounds of the border
 }

@@ -299,6 +299,76 @@ public class LayoutTreeTests
     }
 
     [Fact]
+    public void FindLeafAt_PointInsideLeaf_ReturnsLeaf()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 202, 50));
+
+        FakeLeaf? hit = tree.FindLeafAt(new Vector2(150, 25));
+
+        Assert.Same(right, hit);
+    }
+
+    [Fact]
+    public void FindLeafAt_PointOutsideLeafBounds_ReturnsNull()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 202, 50));
+
+        FakeLeaf? hit = tree.FindLeafAt(new Vector2(101, 25));
+
+        Assert.Null(hit);
+    }
+
+    [Fact]
+    public void GetInsertPreviewRect_HorizontalSplit_ReturnsRequestedHalfOfTarget()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 202, 50));
+
+        Rect2? preview = tree.GetInsertPreviewRect(
+            right,
+            SplitAxis.Horizontal,
+            InsertPlacement.Before
+        );
+
+        Assert.NotNull(preview);
+        AssertRect(new Rect2(102, 0, 50, 50), preview.Value);
+    }
+
+    [Fact]
+    public void GetInsertPreviewRect_VerticalSplit_ReturnsRequestedHalfOfTarget()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf top = new(0, 0);
+        FakeLeaf bottom = new(0, 0);
+        tree.SetRoot(top);
+        Assert.True(tree.InsertSplit(top, bottom, SplitAxis.Vertical, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 50, 202));
+
+        Rect2? preview = tree.GetInsertPreviewRect(
+            bottom,
+            SplitAxis.Vertical,
+            InsertPlacement.After
+        );
+
+        Assert.NotNull(preview);
+        AssertRect(new Rect2(0, 152, 50, 50), preview.Value);
+    }
+
+    [Fact]
     public void FindSplitBorderAt_PointInsideVisibleBorder_ReturnsSplit()
     {
         LayoutTree<FakeLeaf> tree = NewTree();

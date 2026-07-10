@@ -121,6 +121,7 @@ internal sealed class LayoutTree<T>
         switch (node)
         {
             case LeafNode<T> leaf:
+                leaf.Bounds = availableSize;
                 applyLayoutFunc(leaf.Item, availableSize);
                 break;
 
@@ -141,6 +142,60 @@ internal sealed class LayoutTree<T>
             SplitNode<T> split => GetSplitMinimumSize(split, borderThickness),
             _ => throw new InvalidOperationException("Unsupported layout node type."),
         };
+    }
+
+    internal Rect2? GetLeafBounds(T leaf)
+    {
+        if (Root is null || !_leafNodes.TryGetValue(leaf, out LeafNode<T>? leafNode))
+        {
+            return null;
+        }
+
+        return GetLeafBounds(Root, leafNode);
+    }
+
+    internal T? FindLeafAt(Vector2 point)
+    {
+        if (Root is null)
+        {
+            return default;
+        }
+
+        LeafNode<T>? leaf = FindLeafAt(Root, point);
+        return leaf is null ? default : leaf.Item;
+    }
+
+    internal Rect2? GetInsertPreviewRect(T target, SplitAxis axis, InsertPlacement placement)
+    {
+        Rect2? bounds = GetLeafBounds(target);
+        if (bounds is null)
+        {
+            return null;
+        }
+
+        Rect2 targetBounds = bounds.Value;
+        if (axis == SplitAxis.Horizontal)
+        {
+            float width = targetBounds.Size.X / 2.0f;
+            float x =
+                placement == InsertPlacement.Before
+                    ? targetBounds.Position.X
+                    : targetBounds.Position.X + width;
+            return new Rect2(
+                new Vector2(x, targetBounds.Position.Y),
+                new Vector2(width, targetBounds.Size.Y)
+            );
+        }
+
+        float height = targetBounds.Size.Y / 2.0f;
+        float y =
+            placement == InsertPlacement.Before
+                ? targetBounds.Position.Y
+                : targetBounds.Position.Y + height;
+        return new Rect2(
+            new Vector2(targetBounds.Position.X, y),
+            new Vector2(targetBounds.Size.X, height)
+        );
     }
 
     // Given a point and a grab width, finds the split node that contains the clicked border
@@ -192,6 +247,36 @@ internal sealed class LayoutTree<T>
     }
 
     private LeafNode<T> CreateLeaf(T item) => new(item);
+
+    private static Rect2? GetLeafBounds(LayoutNode<T> node, LeafNode<T> leaf)
+    {
+        switch (node)
+        {
+            case LeafNode<T> candidate:
+                return ReferenceEquals(candidate, leaf) ? candidate.Bounds : null;
+
+            case SplitNode<T> split:
+                return GetLeafBounds(split.Left, leaf) ?? GetLeafBounds(split.Right, leaf);
+
+            default:
+                return null;
+        }
+    }
+
+    private static LeafNode<T>? FindLeafAt(LayoutNode<T> node, Vector2 point)
+    {
+        switch (node)
+        {
+            case LeafNode<T> leaf:
+                return leaf.Bounds.HasPoint(point) ? leaf : null;
+
+            case SplitNode<T> split:
+                return FindLeafAt(split.Left, point) ?? FindLeafAt(split.Right, point);
+
+            default:
+                return null;
+        }
+    }
 
     private Vector2 GetSplitMinimumSize(SplitNode<T> split, float borderThickness)
     {
