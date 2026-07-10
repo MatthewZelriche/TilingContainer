@@ -13,7 +13,7 @@ public partial class TilingContainer : Container
 
     // In Pixels
     private float _borderThickness = 1.0f;
-    private float _borderGrabWidth = 8.0f;
+    private float _borderGrabWidth = 12.0f;
     private Color _borderColor = new(0.18f, 0.18f, 0.18f, 1.0f);
     private SplitNode<Control>? _draggedSplit = null;
     private bool _isDraggingBorder = false;
@@ -146,20 +146,21 @@ public partial class TilingContainer : Container
 
     public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
 
-    public override void _GuiInput(InputEvent @event)
+    // Use _Input instead of _GuiInput so we can intercept mouse events before they reach children
+    public override void _Input(InputEvent @event)
     {
         if (
             @event is InputEventMouseButton mouseButton
             && mouseButton.ButtonIndex == MouseButton.Left
         )
         {
-            HandleBorderMouseButton(mouseButton);
+            HandleBorderMouseButton(mouseButton.Pressed, ToLocalPosition(mouseButton.Position));
             return;
         }
 
         if (@event is InputEventMouseMotion mouseMotion)
         {
-            HandleBorderMouseMotion(mouseMotion);
+            HandleBorderMouseMotion(ToLocalPosition(mouseMotion.Position));
         }
     }
 
@@ -209,14 +210,11 @@ public partial class TilingContainer : Container
         DrawBorders(split.Right);
     }
 
-    private void HandleBorderMouseButton(InputEventMouseButton mouseButton)
+    private void HandleBorderMouseButton(bool pressed, Vector2 position)
     {
-        if (mouseButton.Pressed)
+        if (pressed)
         {
-            SplitNode<Control>? split = _layoutTree.FindSplitBorderAt(
-                mouseButton.Position,
-                BorderGrabWidth
-            );
+            SplitNode<Control>? split = _layoutTree.FindSplitBorderAt(position, BorderGrabWidth);
             if (split is null)
             {
                 return;
@@ -224,7 +222,7 @@ public partial class TilingContainer : Container
 
             _draggedSplit = split;
             _isDraggingBorder = true;
-            UpdateDraggedBorder(mouseButton.Position);
+            UpdateDraggedBorder(position);
             AcceptEvent();
             return;
         }
@@ -237,14 +235,14 @@ public partial class TilingContainer : Container
         }
     }
 
-    private void HandleBorderMouseMotion(InputEventMouseMotion mouseMotion)
+    private void HandleBorderMouseMotion(Vector2 position)
     {
         if (!_isDraggingBorder || _draggedSplit is null)
         {
             return;
         }
 
-        UpdateDraggedBorder(mouseMotion.Position);
+        UpdateDraggedBorder(position);
         AcceptEvent();
     }
 
@@ -259,6 +257,11 @@ public partial class TilingContainer : Container
         {
             MarkLayoutDirty();
         }
+    }
+
+    private Vector2 ToLocalPosition(Vector2 viewportPosition)
+    {
+        return GetGlobalTransformWithCanvas().AffineInverse() * viewportPosition;
     }
 
     private void MarkLayoutDirty()

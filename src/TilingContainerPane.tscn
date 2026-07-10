@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[node name="TilingContainerPaneLayout" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MenuBar" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Spacer" type="Control" parent="MenuBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="SplitMenuButton" type="MenuButton" parent="MenuBar"]
+layout_mode = 2
+focus_mode = 0
+mouse_filter = 0
+text = "+"
+
+[node name="CloseButton" type="Button" parent="MenuBar"]
+layout_mode = 2
+focus_mode = 0
+mouse_filter = 0
+text = "x"
+
+[node name="ContentHost" type="MarginContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
