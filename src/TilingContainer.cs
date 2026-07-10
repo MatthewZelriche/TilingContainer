@@ -13,6 +13,10 @@ public partial class TilingContainer : Container
 
     // In Pixels
     private float _borderThickness = 1.0f;
+    private float _borderGrabWidth = 8.0f;
+    private Color _borderColor = new(0.18f, 0.18f, 0.18f, 1.0f);
+    private SplitNode<Control>? _draggedSplit = null;
+    private bool _isDraggingBorder = false;
 
     [Export(PropertyHint.Range, "1,64,1.0,or_greater")]
     public float BorderThickness
@@ -24,7 +28,26 @@ public partial class TilingContainer : Container
             if (Mathf.IsEqualApprox(_borderThickness, value))
                 return;
             _borderThickness = value;
+            _borderGrabWidth = Mathf.Max(_borderGrabWidth, _borderThickness);
             MarkLayoutDirty();
+        }
+    }
+
+    [Export(PropertyHint.Range, "1,64,1.0,or_greater")]
+    public float BorderGrabWidth
+    {
+        get => Mathf.Max(Mathf.Max(1.0f, _borderThickness), _borderGrabWidth);
+        set => _borderGrabWidth = Mathf.Max(Mathf.Max(1.0f, _borderThickness), value);
+    }
+
+    [Export]
+    public Color BorderColor
+    {
+        get => _borderColor;
+        set
+        {
+            _borderColor = value;
+            QueueRedraw();
         }
     }
 
@@ -123,6 +146,34 @@ public partial class TilingContainer : Container
 
     public override Vector2 _GetMinimumSize() => _layoutTree.GetMinimumSize(BorderThickness);
 
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (
+            @event is InputEventMouseButton mouseButton
+            && mouseButton.ButtonIndex == MouseButton.Left
+        )
+        {
+            HandleBorderMouseButton(mouseButton);
+            return;
+        }
+
+        if (@event is InputEventMouseMotion mouseMotion)
+        {
+            HandleBorderMouseMotion(mouseMotion);
+        }
+    }
+
+    // Overridden to draw the custom border lines for the split nodes.
+    public override void _Draw()
+    {
+        if (_layoutTree.Root is null || BorderThickness <= 0.0f || BorderColor.A <= 0.0f)
+        {
+            return;
+        }
+
+        DrawBorders(_layoutTree.Root);
+    }
+
     public override void _Notification(int what)
     {
         if (_layoutTree.Root is null)
@@ -142,6 +193,71 @@ public partial class TilingContainer : Container
                 BorderThickness,
                 new(Vector2.Zero, Size) // Start with the entire available space in the container
             );
+            QueueRedraw();
+        }
+    }
+
+    private void DrawBorders(LayoutNode<Control> node)
+    {
+        if (node is not SplitNode<Control> split)
+        {
+            return;
+        }
+
+        DrawRect(split.BorderRect, BorderColor);
+        DrawBorders(split.Left);
+        DrawBorders(split.Right);
+    }
+
+    private void HandleBorderMouseButton(InputEventMouseButton mouseButton)
+    {
+        if (mouseButton.Pressed)
+        {
+            SplitNode<Control>? split = _layoutTree.FindSplitBorderAt(
+                mouseButton.Position,
+                BorderGrabWidth
+            );
+            if (split is null)
+            {
+                return;
+            }
+
+            _draggedSplit = split;
+            _isDraggingBorder = true;
+            UpdateDraggedBorder(mouseButton.Position);
+            AcceptEvent();
+            return;
+        }
+
+        if (_isDraggingBorder)
+        {
+            _draggedSplit = null;
+            _isDraggingBorder = false;
+            AcceptEvent();
+        }
+    }
+
+    private void HandleBorderMouseMotion(InputEventMouseMotion mouseMotion)
+    {
+        if (!_isDraggingBorder || _draggedSplit is null)
+        {
+            return;
+        }
+
+        UpdateDraggedBorder(mouseMotion.Position);
+        AcceptEvent();
+    }
+
+    private void UpdateDraggedBorder(Vector2 position)
+    {
+        if (_draggedSplit is null)
+        {
+            return;
+        }
+
+        if (_layoutTree.SetSplitRatioFromPoint(_draggedSplit, position, BorderThickness))
+        {
+            MarkLayoutDirty();
         }
     }
 

@@ -143,6 +143,54 @@ internal sealed class LayoutTree<T>
         };
     }
 
+    // Given a point and a grab width, finds the split node that contains the clicked border
+    internal SplitNode<T>? FindSplitBorderAt(Vector2 point, float grabWidth)
+    {
+        if (Root is null)
+        {
+            return null;
+        }
+
+        SplitNode<T>? best = null;
+        float bestDistance = float.PositiveInfinity;
+        FindSplitBorderAt(Root, point, grabWidth, ref best, ref bestDistance);
+        return best;
+    }
+
+    internal bool SetSplitRatioFromPoint(SplitNode<T> split, Vector2 point, float borderThickness)
+    {
+        bool horizontal = split.Axis == SplitAxis.Horizontal;
+        float primarySpan = horizontal ? split.Bounds.Size.X : split.Bounds.Size.Y;
+        float contentSpan = Mathf.Max(0.0f, primarySpan - borderThickness);
+        if (contentSpan <= 0.0f)
+        {
+            return false;
+        }
+
+        Vector2 leftMinSize = GetMinimumSize(split.Left, borderThickness);
+        Vector2 rightMinSize = GetMinimumSize(split.Right, borderThickness);
+        float leftPrimaryMinSpan =
+            split.Axis == SplitAxis.Horizontal ? leftMinSize.X : leftMinSize.Y;
+        float rightPrimaryMinSpan =
+            split.Axis == SplitAxis.Horizontal ? rightMinSize.X : rightMinSize.Y;
+        float totalMinimum = leftPrimaryMinSpan + rightPrimaryMinSpan;
+        if (totalMinimum > contentSpan)
+        {
+            return false;
+        }
+
+        float pointerPrimary = horizontal ? point.X : point.Y;
+        float originPrimary = horizontal ? split.Bounds.Position.X : split.Bounds.Position.Y;
+        float desiredLeftSpan = pointerPrimary - originPrimary - (borderThickness / 2.0f);
+        float clampedLeftSpan = Mathf.Clamp(
+            desiredLeftSpan,
+            leftPrimaryMinSpan,
+            contentSpan - rightPrimaryMinSpan
+        );
+        split.Ratio = clampedLeftSpan / contentSpan;
+        return true;
+    }
+
     private LeafNode<T> CreateLeaf(T item) => new(item);
 
     private Vector2 GetSplitMinimumSize(SplitNode<T> split, float borderThickness)
@@ -171,6 +219,8 @@ internal sealed class LayoutTree<T>
         Rect2 availableSize
     )
     {
+        split.Bounds = availableSize;
+
         bool horizontal = split.Axis == SplitAxis.Horizontal;
         float primarySpan = horizontal ? availableSize.Size.X : availableSize.Size.Y;
         float perpendicularSpan = horizontal ? availableSize.Size.Y : availableSize.Size.X;
@@ -263,6 +313,84 @@ internal sealed class LayoutTree<T>
     private static Vector2 OffsetAlong(Vector2 origin, bool horizontal, float offset)
     {
         return horizontal ? origin + new Vector2(offset, 0) : origin + new Vector2(0, offset);
+    }
+
+    private void FindSplitBorderAt(
+        LayoutNode<T> node,
+        Vector2 point,
+        float grabWidth,
+        ref SplitNode<T>? best,
+        ref float bestDistance
+    )
+    {
+        if (node is not SplitNode<T> split)
+        {
+            return;
+        }
+
+        Rect2 hitRect = GetBorderHitRect(split, grabWidth);
+        if (hitRect.HasPoint(point))
+        {
+            float distance = GetBorderDistance(split, point);
+            if (IsBetterBorderHit(split, distance, best, bestDistance))
+            {
+                best = split;
+                bestDistance = distance;
+            }
+        }
+
+        FindSplitBorderAt(split.Left, point, grabWidth, ref best, ref bestDistance);
+        FindSplitBorderAt(split.Right, point, grabWidth, ref best, ref bestDistance);
+    }
+
+    private static Rect2 GetBorderHitRect(SplitNode<T> split, float grabWidth)
+    {
+        Rect2 rect = split.BorderRect;
+        if (split.Axis == SplitAxis.Horizontal)
+        {
+            float width = Mathf.Max(rect.Size.X, grabWidth);
+            float centerX = rect.Position.X + (rect.Size.X / 2.0f);
+            return new Rect2(
+                new Vector2(centerX - (width / 2.0f), rect.Position.Y),
+                new Vector2(width, rect.Size.Y)
+            );
+        }
+
+        float height = Mathf.Max(rect.Size.Y, grabWidth);
+        float centerY = rect.Position.Y + (rect.Size.Y / 2.0f);
+        return new Rect2(
+            new Vector2(rect.Position.X, centerY - (height / 2.0f)),
+            new Vector2(rect.Size.X, height)
+        );
+    }
+
+    private static float GetBorderDistance(SplitNode<T> split, Vector2 point)
+    {
+        return split.Axis == SplitAxis.Horizontal
+            ? Mathf.Abs(point.X - (split.BorderRect.Position.X + (split.BorderRect.Size.X / 2.0f)))
+            : Mathf.Abs(point.Y - (split.BorderRect.Position.Y + (split.BorderRect.Size.Y / 2.0f)));
+    }
+
+    private static bool IsBetterBorderHit(
+        SplitNode<T> candidate,
+        float candidateDistance,
+        SplitNode<T>? current,
+        float currentDistance
+    )
+    {
+        if (current is null || candidateDistance < currentDistance)
+        {
+            return true;
+        }
+
+        if (!Mathf.IsEqualApprox(candidateDistance, currentDistance))
+        {
+            return false;
+        }
+
+        float candidateArea = candidate.Bounds.Size.X * candidate.Bounds.Size.Y;
+        float currentArea = current.Bounds.Size.X * current.Bounds.Size.Y;
+        return candidateArea < currentArea;
     }
 
     private bool InsertSplitNode(

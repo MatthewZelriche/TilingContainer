@@ -299,6 +299,137 @@ public class LayoutTreeTests
     }
 
     [Fact]
+    public void FindSplitBorderAt_PointInsideVisibleBorder_ReturnsSplit()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        SplitNode<FakeLeaf>? hit = tree.FindSplitBorderAt(new Vector2(51, 25), grabWidth: 2);
+
+        Assert.Same(split, hit);
+    }
+
+    [Fact]
+    public void FindSplitBorderAt_PointInsideExpandedGrabWidth_ReturnsSplit()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        SplitNode<FakeLeaf>? hit = tree.FindSplitBorderAt(new Vector2(47, 25), grabWidth: 10);
+
+        Assert.Same(split, hit);
+    }
+
+    [Fact]
+    public void FindSplitBorderAt_PointOutsideExpandedGrabWidth_ReturnsNull()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+
+        SplitNode<FakeLeaf>? hit = tree.FindSplitBorderAt(new Vector2(45, 25), grabWidth: 10);
+
+        Assert.Null(hit);
+    }
+
+    [Fact]
+    public void FindSplitBorderAt_VerticalSplit_UsesExpandedGrabHeight()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf top = new(0, 0);
+        FakeLeaf bottom = new(0, 0);
+        tree.SetRoot(top);
+        Assert.True(tree.InsertSplit(top, bottom, SplitAxis.Vertical, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 50, 102));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        SplitNode<FakeLeaf>? hit = tree.FindSplitBorderAt(new Vector2(25, 47), grabWidth: 10);
+
+        Assert.Same(split, hit);
+    }
+
+    [Fact]
+    public void SetSplitRatioFromPoint_HorizontalSplit_UpdatesRatioFromX()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(0, 0);
+        FakeLeaf right = new(0, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        bool updated = tree.SetSplitRatioFromPoint(split, new Vector2(76, 25), borderThickness: 2);
+
+        Assert.True(updated);
+        Assert.Equal(0.75f, split.Ratio, precision: 3);
+    }
+
+    [Fact]
+    public void SetSplitRatioFromPoint_VerticalSplit_UpdatesRatioFromY()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf top = new(0, 0);
+        FakeLeaf bottom = new(0, 0);
+        tree.SetRoot(top);
+        Assert.True(tree.InsertSplit(top, bottom, SplitAxis.Vertical, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 50, 102));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        bool updated = tree.SetSplitRatioFromPoint(split, new Vector2(25, 26), borderThickness: 2);
+
+        Assert.True(updated);
+        Assert.Equal(0.25f, split.Ratio, precision: 3);
+    }
+
+    [Fact]
+    public void SetSplitRatioFromPoint_ClampsToChildMinimums()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(30, 0);
+        FakeLeaf right = new(20, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        bool updated = tree.SetSplitRatioFromPoint(split, new Vector2(5, 25), borderThickness: 2);
+
+        Assert.True(updated);
+        Assert.Equal(0.3f, split.Ratio, precision: 3);
+    }
+
+    [Fact]
+    public void SetSplitRatioFromPoint_OverConstrainedLayout_ReturnsFalse()
+    {
+        LayoutTree<FakeLeaf> tree = NewTree();
+        FakeLeaf left = new(80, 0);
+        FakeLeaf right = new(80, 0);
+        tree.SetRoot(left);
+        Assert.True(tree.InsertSplit(left, right, SplitAxis.Horizontal, InsertPlacement.After));
+        tree.ApplyLayout((_, _) => { }, borderThickness: 2, new Rect2(0, 0, 102, 50));
+        SplitNode<FakeLeaf> split = Assert.IsType<SplitNode<FakeLeaf>>(tree.Root);
+
+        bool updated = tree.SetSplitRatioFromPoint(split, new Vector2(80, 25), borderThickness: 2);
+
+        Assert.False(updated);
+        Assert.Equal(0.5f, split.Ratio, precision: 3);
+    }
+
+    [Fact]
     public void GetMinimumSize_DelegatesToRoot()
     {
         LayoutTree<FakeLeaf> tree = NewTree();
