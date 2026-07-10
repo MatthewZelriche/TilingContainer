@@ -39,17 +39,27 @@ public partial class TilingContainer : Container
     // Sets the content of the root node, resetting the entire layout if a previous root was set.
     public void SetRoot(Control root)
     {
-        if (root.GetParent() is not null)
+        ArgumentNullException.ThrowIfNull(root);
+
+        Node? currentParent = root.GetParent();
+        bool rootIsCurrentLeaf = _leafNodesByControl.ContainsKey(root);
+        if (currentParent is not null && (!rootIsCurrentLeaf || currentParent != this))
         {
             throw new InvalidOperationException("Root must not have a parent");
         }
 
-        // TODO: Need to tear down the old root
+        // Clear all old leaf controlsd
+        foreach (Control oldLeaf in _leafNodesByControl.Keys)
+        {
+            RemoveChild(oldLeaf);
+        }
+
         LeafNode rootNode = new() { Control = root };
         _layoutTree.SetRoot(rootNode);
         _leafNodesByControl.Clear();
         _leafNodesByControl.Add(root, rootNode);
         AddChild(root);
+        MarkLayoutDirty();
     }
 
     public bool InsertSplit(

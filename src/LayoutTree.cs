@@ -9,7 +9,6 @@ internal sealed class LayoutTree
 
     internal void SetRoot(LayoutNode root)
     {
-        // TODO: Need to tear down the old root
         Root = root;
         Root.Parent = null;
     }
