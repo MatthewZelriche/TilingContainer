@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Godot;
 
-// TODO: Need a way to add and remove splits/children to the container beyond just the root.
-
 // Note: You should use the Create factory method to create this typically.
 public partial class TilingContainer : Container
 {
-    // Assigned in SetRoot called via the constructor
-    private LayoutTree _layoutTree = new();
-    private readonly Dictionary<Control, LeafNode> _leafNodesByControl = new();
+    private readonly LayoutTree<Control> _layoutTree = new(
+        (control, _) => control.GetCombinedMinimumSize(),
+        ReferenceEqualityComparer.Instance
+    );
 
     // In Pixels
     private float _borderThickness = 1.0f;
@@ -42,22 +41,19 @@ public partial class TilingContainer : Container
         ArgumentNullException.ThrowIfNull(root);
 
         Node? currentParent = root.GetParent();
-        bool rootIsCurrentLeaf = _leafNodesByControl.ContainsKey(root);
+        bool rootIsCurrentLeaf = _layoutTree.Contains(root);
         if (currentParent is not null && (!rootIsCurrentLeaf || currentParent != this))
         {
             throw new InvalidOperationException("Root must not have a parent");
         }
 
-        // Clear all old leaf controlsd
-        foreach (Control oldLeaf in _leafNodesByControl.Keys)
+        // Clear all old leaf controls BEFORE we tear down the old tree
+        foreach (Control oldLeaf in _layoutTree.Leaves)
         {
             RemoveChild(oldLeaf);
         }
 
-        LeafNode rootNode = new() { Control = root };
-        _layoutTree.SetRoot(rootNode);
-        _leafNodesByControl.Clear();
-        _leafNodesByControl.Add(root, rootNode);
+        _layoutTree.SetRoot(root);
         AddChild(root);
         MarkLayoutDirty();
     }
@@ -77,23 +73,11 @@ public partial class TilingContainer : Container
             throw new InvalidOperationException("New child must not have a parent");
         }
 
-        if (!_leafNodesByControl.TryGetValue(toSplit, out LeafNode? toSplitNode))
+        if (!_layoutTree.InsertSplit(toSplit, newChild, axis, placement))
         {
             return false;
         }
 
-        if (_leafNodesByControl.ContainsKey(newChild))
-        {
-            return false;
-        }
-
-        LeafNode newChildNode = new() { Control = newChild };
-        if (!_layoutTree.InsertSplit(toSplitNode, newChildNode, axis, placement))
-        {
-            return false;
-        }
-
-        _leafNodesByControl.Add(newChild, newChildNode);
         AddChild(newChild);
         MarkLayoutDirty();
         return true;
@@ -103,25 +87,36 @@ public partial class TilingContainer : Container
     {
         ArgumentNullException.ThrowIfNull(child);
 
-        if (!_leafNodesByControl.TryGetValue(child, out LeafNode? childNode))
+        if (!_layoutTree.RemoveLeaf(child))
         {
             return false;
         }
 
-        if (childNode.Parent is null)
-        {
-            return false;
-        }
-
-        if (!_layoutTree.RemoveLeaf(childNode))
-        {
-            throw new InvalidOperationException(
-                "Layout tree is inconsistent with the control map."
-            );
-        }
-
-        _leafNodesByControl.Remove(child);
         RemoveChild(child);
+        MarkLayoutDirty();
+        return true;
+    }
+
+    public bool RelocateLeaf(
+        Control toMove,
+        Control target,
+        SplitAxis axis,
+        InsertPlacement placement
+    )
+    {
+        ArgumentNullException.ThrowIfNull(toMove);
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (ReferenceEquals(toMove, target))
+        {
+            return false;
+        }
+
+        if (!_layoutTree.RelocateLeaf(toMove, target, axis, placement))
+        {
+            return false;
+        }
+
         MarkLayoutDirty();
         return true;
     }
@@ -141,9 +136,8 @@ public partial class TilingContainer : Container
             _layoutTree.ApplyLayout(
                 (node, bounds) =>
                 {
-                    Control leafControl = ((LeafNode)node).Control;
-                    Debug.Assert(leafControl.GetParent() == this);
-                    this.FitChildInRect(leafControl, bounds);
+                    Debug.Assert(node.GetParent() == this);
+                    this.FitChildInRect(node, bounds);
                 },
                 BorderThickness,
                 new(Vector2.Zero, Size) // Start with the entire available space in the container

@@ -22,7 +22,7 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal);
+        var split = Split(left, right, SplitAxis.Horizontal);
 
         // width 102, border 2 -> content 100, 50/50 -> 50 each
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -36,7 +36,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.25f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.25f;
 
         // content 100, ratio 0.25 -> left 25, right 75
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -50,7 +51,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.25f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.25f;
 
         // content 100, ratio 0.25 -> left 25, border 2 -> right starts at 27
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -64,7 +66,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.3f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.3f;
 
         var results = Collect(split, borderThickness: 4, new Rect2(0, 0, 200, 50));
 
@@ -83,7 +86,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(80, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.5f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.5f;
 
         // content 100, ratio 0.5 -> 50, but left minimum 80 wins
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -97,7 +101,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(80, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.5f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.5f;
 
         // content 100, ratio 0.5 -> 50, but right minimum 80 caps left at 20
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -111,7 +116,7 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(40, 0);
         FakeLeaf right = new(20, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal);
+        var split = Split(left, right, SplitAxis.Horizontal);
 
         // content 50, total minimum 60 > 50 -> left = 50 * (40/60) = 33.333, right = 16.667
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 52, 50));
@@ -125,7 +130,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf top = new(0, 0);
         FakeLeaf bottom = new(0, 0);
-        SplitNode split = new(top, bottom, SplitAxis.Vertical) { Ratio = 0.25f };
+        var split = Split(top, bottom, SplitAxis.Vertical);
+        split.Ratio = 0.25f;
 
         // content 100, ratio 0.25 -> top 25, bottom 75, full width 50
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 50, 102));
@@ -141,7 +147,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf top = new(0, 0);
         FakeLeaf bottom = new(0, 0);
-        SplitNode split = new(top, bottom, SplitAxis.Vertical) { Ratio = 0.25f };
+        var split = Split(top, bottom, SplitAxis.Vertical);
+        split.Ratio = 0.25f;
 
         // content 100, ratio 0.25 -> top 25, border 2 -> bottom starts at y = 27
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 50, 102));
@@ -155,7 +162,8 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal) { Ratio = 0.25f };
+        var split = Split(left, right, SplitAxis.Horizontal);
+        split.Ratio = 0.25f;
 
         // BorderRect is populated as a side effect of ApplyLayout.
         Collect(split, borderThickness: 2, new Rect2(0, 0, 102, 50));
@@ -170,8 +178,8 @@ public class ApplyLayoutTests
         FakeLeaf a = new(0, 0);
         FakeLeaf b = new(0, 0);
         FakeLeaf c = new(0, 0);
-        SplitNode inner = new(b, c, SplitAxis.Vertical);
-        SplitNode outer = new(a, inner, SplitAxis.Horizontal);
+        var inner = Split(b, c, SplitAxis.Vertical);
+        var outer = Split(Leaf(a), inner, SplitAxis.Horizontal);
 
         var results = Collect(outer, borderThickness: 2, new Rect2(0, 0, 200, 100));
 
@@ -187,7 +195,7 @@ public class ApplyLayoutTests
     {
         FakeLeaf left = new(0, 0);
         FakeLeaf right = new(0, 0);
-        SplitNode split = new(left, right, SplitAxis.Horizontal);
+        var split = Split(left, right, SplitAxis.Horizontal);
 
         // width equals the border, so there is no content span to distribute
         var results = Collect(split, borderThickness: 2, new Rect2(0, 0, 2, 50));

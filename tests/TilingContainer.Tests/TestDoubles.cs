@@ -6,10 +6,8 @@ using Xunit;
 
 namespace TilingContainer.Tests;
 
-// A leaf whose minimum size is supplied directly, with no dependency on a Godot Control.
-// This is the whole point of LeafNodeBase existing: production uses LeafNode (backed by a
-// real Control), tests substitute this.
-internal sealed class FakeLeaf : LeafNodeBase
+// A leaf payload whose minimum size is supplied directly, with no dependency on a Godot Control.
+internal sealed class FakeLeaf
 {
     private readonly Vector2 _minSize;
 
@@ -17,29 +15,53 @@ internal sealed class FakeLeaf : LeafNodeBase
 
     public FakeLeaf(float x, float y) => _minSize = new Vector2(x, y);
 
-    public override Vector2 GetMinimumSize(float borderThickness) => _minSize;
+    public Vector2 GetMinimumSize(float borderThickness) => _minSize;
 }
 
 internal static class LayoutTestHelpers
 {
     private const float Tolerance = 0.001f;
 
+    public static LayoutTree<FakeLeaf> NewTree() =>
+        new((leaf, borderThickness) => leaf.GetMinimumSize(borderThickness));
+
+    public static LeafNode<FakeLeaf> Leaf(FakeLeaf leaf) => new(leaf);
+
+    public static SplitNode<FakeLeaf> Split(FakeLeaf left, FakeLeaf right, SplitAxis axis) =>
+        Split(Leaf(left), Leaf(right), axis);
+
+    public static SplitNode<FakeLeaf> Split(
+        LayoutNode<FakeLeaf> left,
+        LayoutNode<FakeLeaf> right,
+        SplitAxis axis
+    ) => new(left, right, axis);
+
+    public static List<(FakeLeaf Node, Rect2 Bounds)> Collect(
+        FakeLeaf leaf,
+        float borderThickness,
+        Rect2 available
+    ) => Collect(Leaf(leaf), borderThickness, available);
+
     // Runs a layout pass and returns the (leaf, bounds) assignments in traversal order.
-    public static List<(LeafNodeBase Node, Rect2 Bounds)> Collect(
-        LayoutNode root,
+    public static List<(FakeLeaf Node, Rect2 Bounds)> Collect(
+        LayoutNode<FakeLeaf> root,
         float borderThickness,
         Rect2 available
     )
     {
-        List<(LeafNodeBase, Rect2)> results = new();
-        root.ApplyLayout((node, bounds) => results.Add((node, bounds)), borderThickness, available);
+        List<(FakeLeaf, Rect2)> results = new();
+        NewTree()
+            .ApplyLayout(
+                root,
+                (node, bounds) => results.Add((node, bounds)),
+                borderThickness,
+                available
+            );
         return results;
     }
 
-    public static Rect2 BoundsOf(
-        this List<(LeafNodeBase Node, Rect2 Bounds)> results,
-        LeafNodeBase leaf
-    ) => results.Single(r => ReferenceEquals(r.Node, leaf)).Bounds;
+    public static Rect2 BoundsOf(this List<(FakeLeaf Node, Rect2 Bounds)> results, FakeLeaf leaf) =>
+        results.Single(r => ReferenceEquals(r.Node, leaf)).Bounds;
 
     public static void AssertVec(Vector2 expected, Vector2 actual)
     {
