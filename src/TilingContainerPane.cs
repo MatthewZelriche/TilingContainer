@@ -65,7 +65,7 @@ public partial class TilingContainerPane<T> : VBoxContainer
         _menuBar.GuiInput += OnMenuBarGuiInput;
 
         BindSplitMenu(layout);
-        BindButton(layout, "MenuBar/CloseButton", Close);
+        BindButton(layout, "MenuBar/MenuBarContents/CloseButton", Close);
 
         _contentHost = layout.GetNode<MarginContainer>("ContentHost");
 
@@ -89,7 +89,7 @@ public partial class TilingContainerPane<T> : VBoxContainer
 
     private void BindSplitMenu(Node root)
     {
-        MenuButton button = root.GetNode<MenuButton>("MenuBar/SplitMenuButton");
+        MenuButton button = root.GetNode<MenuButton>("MenuBar/MenuBarContents/SplitMenuButton");
         PopupMenu popup = button.GetPopup();
         popup.Clear();
         popup.AddItem("Left", SplitLeftId);

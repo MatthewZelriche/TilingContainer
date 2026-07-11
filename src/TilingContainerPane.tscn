@@ -1,30 +1,48 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_bar"]
+bg_color = Color(0.12549, 0.12549, 0.12549, 1)
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
 
 [node name="TilingContainerPaneLayout" type="VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="MenuBar" type="HBoxContainer" parent="."]
+[node name="MenuBar" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_menu_bar")
 
-[node name="Spacer" type="Control" parent="MenuBar"]
+[node name="MenuBarContents" type="HBoxContainer" parent="MenuBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Spacer" type="Control" parent="MenuBar/MenuBarContents"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="SplitMenuButton" type="MenuButton" parent="MenuBar"]
+[node name="SplitMenuButton" type="MenuButton" parent="MenuBar/MenuBarContents"]
+custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
 focus_mode = 0
 mouse_filter = 0
+flat = true
 text = "+"
 
-[node name="CloseButton" type="Button" parent="MenuBar"]
+[node name="CloseButton" type="Button" parent="MenuBar/MenuBarContents"]
+custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
 focus_mode = 0
 mouse_filter = 0
+flat = true
 text = "x"
 
 [node name="ContentHost" type="MarginContainer" parent="."]
